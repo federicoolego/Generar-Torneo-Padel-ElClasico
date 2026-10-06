@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, HardDrive, Info } from 'lucide-react'
+import { ChevronDown, Database, Info } from 'lucide-react'
 
 const CLAVE = 'generador:instructivo-cerrado'
 
@@ -31,24 +31,23 @@ export default function Instructivo() {
               <li><strong>Horarios:</strong> día y hora de cada partido de zona (con “Completar automático” se reparten solos).</li>
               <li><strong>Playoff:</strong> el cuadro se arma solo con los clasificados (1° Zona A vs 2° Zona B…) y le ponés día y hora a la primera ronda.</li>
               <li><strong>Imágenes:</strong> zonas y playoff listas para compartir por WhatsApp (también con el botón verde de abajo a la derecha).</li>
-              <li><strong>Partidos:</strong> el cronograma en PDF, en orden, con una columna para anotar los resultados.</li>
+              <li><strong>Partidos:</strong> cargás los resultados; las posiciones de cada zona y los cruces del playoff se completan solos. También está el cronograma en PDF con los resultados.</li>
             </ol>
             <p className="mt-2 text-xs text-noche/60">Cada categoría es un torneo aparte. Para otra categoría del mismo torneo, usá “Duplicar” y cambiá la categoría y las parejas.</p>
           </div>
           <div className="space-y-3">
-            <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
-              <p className="mb-1.5 flex items-center gap-2 font-semibold text-amber-900"><HardDrive className="h-4 w-4" aria-hidden /> Importante: dónde se guardan los torneos</p>
-              <ul className="list-disc space-y-1 pl-5 text-amber-950/90">
-                <li><strong>No hay base de datos:</strong> todo queda guardado <strong>solo en este navegador</strong>, en este dispositivo.</li>
-                <li>Si abrís la app en otro celular, otra compu u otro navegador, <strong>no vas a ver los torneos</strong>.</li>
-                <li>Se pierden si borrás los <em>datos de navegación / cookies</em> del navegador, si usás una ventana de incógnito o, en iPhone, si pasan varios días sin abrir la app.</li>
-                <li>Refrescar la página, cerrar el navegador o apagar el equipo <strong>no</strong> los borra.</li>
+            <div className="rounded-lg bg-cancha-suave/60 p-3 ring-1 ring-cancha/15">
+              <p className="mb-1.5 flex items-center gap-2 font-semibold text-noche"><Database className="h-4 w-4" aria-hidden /> Dónde se guardan los torneos</p>
+              <ul className="list-disc space-y-1 pl-5">
+                <li>Todo se guarda solo en la <strong>base de datos</strong>: los ves desde cualquier celular o compu entrando con el usuario.</li>
+                <li>Si dos personas cargan resultados a la vez, tocá <strong>Traer cambios</strong> en “Partidos” para ver lo que cargó la otra.</li>
+                <li>Arriba a la derecha de cada torneo se ve si los cambios ya quedaron guardados.</li>
               </ul>
             </div>
             <div className="rounded-lg bg-vidrio p-3">
-              <p className="mb-1 font-semibold text-noche">Para no perder nada</p>
-              <p>Usá <strong>Exportar respaldo</strong>: baja un archivo con todos tus torneos. Guardalo en Drive, en tu mail o mandátelo por WhatsApp. Con <strong>Importar respaldo</strong> los recuperás en cualquier dispositivo.</p>
-              <p className="mt-2">Una vez terminado el torneo, las imágenes y el PDF ya generados son tu registro: podés eliminar el torneo de la app sin problema.</p>
+              <p className="mb-1 font-semibold text-noche">Formato de partido y resultados</p>
+              <p>Cada instancia (zonas, octavos, cuartos, semi, final) tiene su formato: al mejor de 3 sets, mejor de 3 con super tiebreak, americano a 7 o a 9 games. Se elige al crear el torneo o en cada instancia, y con eso se validan los resultados.</p>
+              <p className="mt-2">Zonas de 3: posiciones por partidos ganados, después resultado entre ellos, diferencia de sets y de games. Si el empate es total, se ordena a mano según el sorteo.</p>
             </div>
           </div>
         </div>

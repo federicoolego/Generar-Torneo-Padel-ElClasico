@@ -62,7 +62,7 @@ export function pdfCronograma(
       startY: y + 2.5,
       margin: { left: M, right: M },
       head: [cab],
-      body: del.map((f) => [f.hora || '—', ...(conSede ? [f.sede || '—'] : []), f.etapa, f.a, 'vs', f.b, '']),
+      body: del.map((f) => [f.hora || '—', ...(conSede ? [f.sede || '—'] : []), f.etapa, f.a, 'vs', f.b, f.resultado]),
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 9.5, cellPadding: 2.4, textColor: [20, 20, 20], lineColor: [150, 150, 150], lineWidth: 0.2, valign: 'middle', minCellHeight: 10 },
       headStyles: { fillColor: rgb(colores.oscuro), textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8, minCellHeight: 7 },

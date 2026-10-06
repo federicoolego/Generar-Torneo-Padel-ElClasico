@@ -1,4 +1,4 @@
-// Lógica de zonas y playoff (misma que la app de torneos, pero en memoria)
+// Lógica de zonas y playoff (modelo en memoria; se guarda en Supabase desde almacen.ts)
 
 /** `sede` = complejo donde se juega (obligatorio). `cancha` quedó de versiones anteriores y no se usa */
 export interface Horario { fecha: string; hora: string; sede?: string; cancha?: string }
@@ -40,13 +40,61 @@ export interface Categoria {
   cuadro: (Slot | null)[][] | null
   /** clave `${ronda}-${orden}` */
   horariosPlayoff: Record<string, Horario>
+  /** formato de partido de cada instancia (zonas, octavos, cuartos…) */
+  formatos: Record<Instancia, Formato>
+  /** resultados de zona, misma clave que horariosZona */
+  resultadosZona: Record<string, Resultado>
+  /** resultados de playoff, misma clave que horariosPlayoff */
+  resultadosPlayoff: Record<string, Resultado>
+  /** orden definido a mano ante un empate total en una zona: zona → ids de pareja */
+  desempates: Record<string, string[]>
   actualizado: number
 }
 
+// ------------------------------------------------------------------ formatos de partido
+
+export type Formato = 'mejor_de_3' | 'mejor_de_3_stb' | 'americano_7' | 'americano_9'
+export type Instancia = 'zonas' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final'
+
+export const FORMATOS: { id: Formato; nombre: string; corto: string }[] = [
+  { id: 'mejor_de_3', nombre: 'Al mejor de 3 sets', corto: 'Mejor de 3 sets' },
+  { id: 'mejor_de_3_stb', nombre: 'Al mejor de 3 sets, el 3ro super tiebreak', corto: 'Mejor de 3 · 3ro super TB' },
+  { id: 'americano_7', nombre: 'Americano a 7 games', corto: 'Americano a 7' },
+  { id: 'americano_9', nombre: 'Americano a 9 games', corto: 'Americano a 9' },
+]
+export const nombreFormato = (f: Formato) => FORMATOS.find((x) => x.id === f)?.nombre ?? f
+
+export const INSTANCIAS: { id: Instancia; nombre: string }[] = [
+  { id: 'zonas', nombre: 'Zonas' },
+  { id: '16avos', nombre: '16avos' },
+  { id: 'octavos', nombre: 'Octavos' },
+  { id: 'cuartos', nombre: 'Cuartos' },
+  { id: 'semifinal', nombre: 'Semifinal' },
+  { id: 'final', nombre: 'Final' },
+]
+export const nombreInstancia = (i: Instancia) => INSTANCIAS.find((x) => x.id === i)?.nombre ?? i
+
+/** Lo que más se juega: americano a 9 hasta cuartos; semi y final al mejor de 3 con super tiebreak */
+export const FORMATOS_DEFECTO: Record<Instancia, Formato> = {
+  zonas: 'americano_9', '16avos': 'americano_9', octavos: 'americano_9', cuartos: 'americano_9', semifinal: 'mejor_de_3_stb', final: 'mejor_de_3_stb',
+}
+
+/**
+ * Resultado de un partido. `a` y `b` son las parejas que lo jugaron (en el orden del partido):
+ * si después cambian (se corrigió un resultado anterior o las zonas), el resultado queda desactualizado.
+ * `sets` = games de A y de B en cada set ([[6,4],[3,6],[10,8]]). `wo` = gana ese lado por walkover.
+ */
+export interface Resultado { a: string; b: string; sets: [number, number][]; wo?: 'a' | 'b' }
+
 export const LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 /** Completa campos que no existían en torneos guardados con versiones anteriores */
-export const normalizar = (c: Categoria): Categoria =>
-  ({ ...c, fechaInicio: c.fechaInicio ?? '', fechaFin: c.fechaFin ?? '', observacion: c.observacion ?? '', inscripcion: c.inscripcion ?? '' })
+export const normalizar = (c: Categoria): Categoria => ({
+  ...c,
+  fechaInicio: c.fechaInicio ?? '', fechaFin: c.fechaFin ?? '', observacion: c.observacion ?? '', inscripcion: c.inscripcion ?? '',
+  horariosZona: c.horariosZona ?? {}, horariosPlayoff: c.horariosPlayoff ?? {},
+  formatos: { ...FORMATOS_DEFECTO, ...(c.formatos ?? {}) },
+  resultadosZona: c.resultadosZona ?? {}, resultadosPlayoff: c.resultadosPlayoff ?? {}, desempates: c.desempates ?? {},
+})
 
 /** "17000" → "$17.000" */
 export const formatoPesos = (v: string) => (v ? `$${Number(v).toLocaleString('es-AR')}` : '')
@@ -54,10 +102,23 @@ export const formatoPesos = (v: string) => (v ? `$${Number(v).toLocaleString('es
 export const MIN_PAREJAS = 6
 export const MAX_PAREJAS = 24
 
-export const nuevoId = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now())
+/** UUID v4 (los ids se guardan en columnas uuid de la base) */
+export function nuevoId(): string {
+  if (crypto.randomUUID) return crypto.randomUUID()
+  const b = crypto.getRandomValues(new Uint8Array(16))
+  b[6] = (b[6] & 0x0f) | 0x40
+  b[8] = (b[8] & 0x3f) | 0x80
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('')
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+}
+export const esUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
 
 export function nuevaCategoria(): Categoria {
-  return { id: nuevoId(), torneo: '', fechaInicio: '', fechaFin: '', categoria: '', observacion: '', inscripcion: '', parejas: [], zonas: [], horariosZona: {}, cuadro: null, horariosPlayoff: {}, actualizado: Date.now() }
+  return {
+    id: nuevoId(), torneo: '', fechaInicio: '', fechaFin: '', categoria: '', observacion: '', inscripcion: '', parejas: [], zonas: [],
+    horariosZona: {}, cuadro: null, horariosPlayoff: {}, formatos: { ...FORMATOS_DEFECTO }, resultadosZona: {}, resultadosPlayoff: {}, desempates: {},
+    actualizado: Date.now(),
+  }
 }
 
 export const CATEGORIAS_SUGERIDAS = [
@@ -166,6 +227,11 @@ export function tamCuadro(q: number) {
 
 const FASES: Record<number, string> = { 2: 'Final', 4: 'Semifinal', 8: 'Cuartos', 16: 'Octavos', 32: '16avos' }
 export const nombreFase = (tamRonda: number) => FASES[tamRonda] ?? `Ronda de ${tamRonda}`
+const INSTANCIA_DE_TAM: Record<number, Instancia> = { 2: 'final', 4: 'semifinal', 8: 'cuartos', 16: 'octavos', 32: '16avos' }
+/** Instancia de una ronda según cuántas parejas la juegan (8 → cuartos) */
+export const instanciaDeTam = (tamRonda: number): Instancia => INSTANCIA_DE_TAM[tamRonda] ?? '16avos'
+/** Instancia de la ronda `ronda` (1 = primera) de un cuadro de `partidosPrimera` partidos */
+export const instanciaDeRonda = (partidosPrimera: number, ronda: number) => instanciaDeTam((partidosPrimera * 2) / 2 ** (ronda - 1))
 
 /** Cuadro automático: siembra estándar y sin cruces de la misma zona en primera ronda */
 export function cuadroAutomatico(zonas: string[][]): (Slot | null)[][] {

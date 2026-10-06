@@ -4,6 +4,8 @@ import {
   CATEGORIAS_SUGERIDAS, MAX_PAREJAS, MIN_PAREJAS, clavePareja, formatoPesos, jugadoresDe, nombrePropio, nuevoId, type Categoria, type Pareja,
 } from '../../lib/torneo'
 import { Alerta, Button, Card, Field, Input, Textarea } from '../ui'
+import { FormatosPorInstancia } from '../Formato'
+import { instanciasDelTorneo, textoFormatos } from '../../lib/resultados'
 
 type Props = { cat: Categoria; cambiar: (f: (c: Categoria) => Categoria) => void }
 
@@ -30,10 +32,20 @@ export function PasoDatos({ cat, cambiar }: Props) {
         <Input inputMode="numeric" value={formatoPesos(cat.inscripcion)} placeholder="Ej: $17.000"
           onChange={(e) => cambiar((c) => ({ ...c, inscripcion: e.target.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 9) }))} />
       </Field>
+      <div>
+        <p className="mb-1 text-sm font-medium text-noche">Formato de partido por instancia</p>
+        <p className="mb-2 text-xs text-noche/60">Se usa para validar los resultados. También se puede cambiar después, en cada instancia del paso “Partidos”.</p>
+        <FormatosPorInstancia cat={cat} cambiar={cambiar} />
+      </div>
       <Field label="Observación" hint="Opcional. Aparece en las imágenes.">
         <Textarea rows={3} value={cat.observacion} onChange={(e) => cambiar((c) => ({ ...c, observacion: e.target.value }))}
           placeholder="Ej: Americano a 9 games. Semifinales y final al mejor de 3 sets, el 3er set es un tiebreak." />
       </Field>
+      <Button type="button" variante="fantasma" className="-mt-2 px-2 py-1 text-xs"
+        onClick={() => (!cat.observacion.trim() || confirm('Se reemplaza la observación actual. ¿Continuar?')) &&
+          cambiar((c) => ({ ...c, observacion: textoFormatos(c, instanciasDelTorneo(c)) }))}>
+        Escribir los formatos en la observación
+      </Button>
       <p className="text-xs text-noche/55">* Obligatorio</p>
     </Card>
   )
