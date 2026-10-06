@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { CloudUpload, Copy, Download, Plus, Trash2, Upload } from 'lucide-react'
-import { duplicar, eliminar, exportar, guardarAhora, importar, listar, migrarLocales, torneosLocales, type ResumenTorneo } from '../lib/almacen'
+import { useCallback, useEffect, useState } from 'react'
+import { CloudUpload, Copy, Plus, Trash2 } from 'lucide-react'
+import { duplicar, eliminar, guardarAhora, listar, migrarLocales, torneosLocales, type ResumenTorneo } from '../lib/almacen'
 import { nuevaCategoria, rangoFechas } from '../lib/torneo'
 import { Alerta, Button, Spinner, Titulo, Vacio } from '../components/ui'
 import Instructivo from '../components/Instructivo'
@@ -10,7 +10,6 @@ export default function Inicio({ onAbrir }: { onAbrir: (id: string) => void }) {
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'error'; txt: string } | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [locales, setLocales] = useState(torneosLocales)
-  const archivo = useRef<HTMLInputElement>(null)
 
   const refrescar = useCallback(async () => {
     try { setLista(await listar()) } catch (e) { setLista([]); setMsg({ tipo: 'error', txt: `No se pudo leer la base: ${e instanceof Error ? e.message : e}` }) }
@@ -21,28 +20,6 @@ export default function Inicio({ onAbrir }: { onAbrir: (id: string) => void }) {
   async function accion(f: () => Promise<void>) {
     setOcupado(true)
     try { await f() } catch (e) { setMsg({ tipo: 'error', txt: e instanceof Error ? e.message : 'Algo salió mal.' }) } finally { setOcupado(false) }
-  }
-
-  const descargarRespaldo = () => accion(async () => {
-    const r = await exportar()
-    const url = URL.createObjectURL(new Blob([r.contenido], { type: 'application/json' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = r.nombre
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-    setMsg({ tipo: 'ok', txt: `Se descargó ${r.nombre} con ${r.cantidad} torneo(s).` })
-  })
-
-  async function cargarRespaldo(e: ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]
-    e.target.value = ''
-    if (!f) return
-    await accion(async () => {
-      const r = await importar(await f.text())
-      await refrescar()
-      setMsg({ tipo: 'ok', txt: `Respaldo cargado: ${r.nuevos} nuevo(s), ${r.actualizados} actualizado(s), ${r.sinCambios} sin cambios.` })
-    })
   }
 
   const subirLocales = () => accion(async () => {
@@ -70,12 +47,6 @@ export default function Inicio({ onAbrir }: { onAbrir: (id: string) => void }) {
           <Button onClick={subirLocales} cargando={ocupado}><CloudUpload className="h-4 w-4" aria-hidden /> Subirlos a la base</Button>
         </div>
       )}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Button variante="secundario" onClick={descargarRespaldo} disabled={!lista?.length || ocupado}><Download className="h-4 w-4" aria-hidden /> Exportar respaldo</Button>
-        <Button variante="secundario" onClick={() => archivo.current?.click()} disabled={ocupado}><Upload className="h-4 w-4" aria-hidden /> Importar respaldo</Button>
-        <input ref={archivo} type="file" accept="application/json,.json" className="hidden" onChange={cargarRespaldo} />
-        <span className="text-xs text-noche/55">Un archivo con todos los torneos, por si acaso.</span>
-      </div>
       {msg && <div className="mb-4"><Alerta tipo={msg.tipo}>{msg.txt}</Alerta></div>}
       {lista === null ? <Spinner texto="Cargando torneos…" /> : lista.length === 0 ? (
         <Vacio titulo="Todavía no armaste ningún torneo" accion={<Button onClick={nueva}><Plus className="h-4 w-4" aria-hidden /> Nuevo torneo</Button>}>

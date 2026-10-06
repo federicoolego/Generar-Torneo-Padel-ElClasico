@@ -275,28 +275,16 @@ function conIdsNuevos(c: Categoria, todos: boolean): Categoria {
   }
 }
 
-// ------------------------------------------------------------------ respaldo (exportar / importar)
+// ------------------------------------------------------------------ importación (solo para subir los torneos de la versión anterior)
 
-/** Identifica de qué app es un respaldo: "nodo", "clasico", "defensores" */
-export const APP = 'clasico'
+const APP = 'clasico'
 interface Respaldo { app: string; version: 1; exportado: string; torneos: Categoria[] }
-
-/** Archivo JSON con todos los torneos de la base */
-export async function exportar(): Promise<{ nombre: string; contenido: string; cantidad: number }> {
-  await vaciar()
-  const torneos = await traer()
-  const hoy = new Date()
-  const p = (n: number) => String(n).padStart(2, '0')
-  const fecha = `${hoy.getFullYear()}-${p(hoy.getMonth() + 1)}-${p(hoy.getDate())}`
-  const r: Respaldo = { app: APP, version: 1, exportado: hoy.toISOString(), torneos }
-  return { nombre: `torneos-${APP}-${fecha}.json`, contenido: JSON.stringify(r, null, 2), cantidad: torneos.length }
-}
 
 /**
  * Carga un respaldo en la base. Los torneos que no están se agregan; los que ya están
  * se reemplazan solo si el del archivo es más nuevo. Nunca borra torneos.
  */
-export async function importar(texto: string): Promise<{ nuevos: number; actualizados: number; sinCambios: number }> {
+async function importar(texto: string): Promise<{ nuevos: number; actualizados: number; sinCambios: number }> {
   let r: Partial<Respaldo>
   try { r = JSON.parse(texto) } catch { throw new Error('El archivo no es un respaldo válido.') }
   if (!r || !Array.isArray(r.torneos)) throw new Error('El archivo no es un respaldo válido.')
