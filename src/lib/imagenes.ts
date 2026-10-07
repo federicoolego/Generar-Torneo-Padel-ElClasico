@@ -1,5 +1,5 @@
 // Genera las imágenes (PNG) de zonas y playoff dibujando en un <canvas>
-import { LETRAS, diaLargo, formatoPesos, partidosDeZona, rangoFechas, rondasPlayoff, sedeCorta, textoHorario, type Categoria } from './torneo'
+import { LETRAS, diaLargo, formatoPesos, partidosDeZona, rangoFechas, rondasPlayoff, textoHorario, type Categoria } from './torneo'
 import { resolverTorneo } from './resultados'
 
 // Paleta de El Clásico (índigo del logo, azul del escudo y amarillo de la pelota)
@@ -70,13 +70,13 @@ function rect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h:
 
 // ------------------------------------------------------------------ íconos (trazos de lucide, 24×24)
 type Nodo = ['path', string] | ['rect', number, number, number, number, number] | ['circle', number, number, number]
-const ICONOS: Record<'trofeo' | 'medalla' | 'calendario' | 'ticket', Nodo[]> = {
+const ICONOS: Record<'trofeo' | 'premio' | 'calendario' | 'ticket', Nodo[]> = {
   trofeo: [
     ['path', 'M6 9H4.5a2.5 2.5 0 0 1 0-5H6'], ['path', 'M18 9h1.5a2.5 2.5 0 0 0 0-5H18'], ['path', 'M4 22h16'],
     ['path', 'M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22'],
     ['path', 'M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22'], ['path', 'M18 2H6v7a6 6 0 0 0 12 0V2Z'],
   ],
-  medalla: [['path', 'M11 12 5.12 2.2'], ['path', 'm13 12 5.88-9.8'], ['path', 'M8 7h8'], ['circle', 12, 17, 5], ['path', 'M12 18v-2h-.5']],
+  premio: [['circle', 12, 8, 6], ['path', 'M15.477 12.89 17 22l-5-3-5 3 1.523-9.11']],
   calendario: [
     ['path', 'M8 2v4'], ['path', 'M16 2v4'], ['rect', 3, 4, 18, 18, 2], ['path', 'M3 10h18'],
     ['path', 'M8 14h.01'], ['path', 'M12 14h.01'], ['path', 'M16 14h.01'], ['path', 'M8 18h.01'], ['path', 'M12 18h.01'], ['path', 'M16 18h.01'],
@@ -104,7 +104,10 @@ function icono(ctx: CanvasRenderingContext2D, nombre: keyof typeof ICONOS, x: nu
   ctx.restore()
 }
 
-/** Encabezado con logo, torneo, categoría, fechas, inscripción y el título de la imagen (arriba a la derecha). Devuelve la altura usada */
+/**
+ * Encabezado con logo, nombre del torneo, fechas, inscripción, premio y el título de la imagen (arriba a la derecha).
+ * Tamaños: nombre > fechas > inscripción = premio. Devuelve la altura usada
+ */
 function encabezado(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cat: Categoria, titulo: string, medir = false): number {
   const logoTam = 168
   const x = MARGEN + logoTam + 36
@@ -118,7 +121,8 @@ function encabezado(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cat: C
   const lt = lineas(ctx, cat.torneo || 'Torneo', anchoTexto - sangria - anchoEtiqueta - 20)
   const fechas = rangoFechas(cat.fechaInicio, cat.fechaFin)
   const insc = cat.inscripcion ? `Inscripción ${formatoPesos(cat.inscripcion)} por jugador` : ''
-  const alto = Math.max(logoTam + 2 * 44, 44 + lt.length * 64 + 60 + (fechas ? 58 : 0) + (insc ? 44 : 0) + 30)
+  const premio = cat.premio?.trim() ? `Premio: ${cat.premio.trim()}` : ''
+  const alto = Math.max(logoTam + 2 * 44, 44 + lt.length * 64 + (fechas ? 60 : 0) + (insc ? 44 : 0) + (premio ? 44 : 0) + 30)
   if (medir) return alto
   ctx.fillStyle = C.noche
   ctx.fillRect(0, 0, ANCHO, alto)
@@ -130,30 +134,27 @@ function encabezado(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cat: C
   ctx.font = `700 26px ${TEXTO}`
   ctx.fillText(etiqueta, ex + 18, 59)
   let y = 44 + 56
-  // título con trofeo
+  // nombre del torneo con trofeo
   icono(ctx, 'trofeo', x, y - 50, 50, C.lima)
   ctx.fillStyle = C.blanco
   ctx.font = `700 64px ${DISPLAY}`
   for (const l of lt) { ctx.fillText(l, x + sangria, y); y += 64 }
-  // categoría con medalla
-  icono(ctx, 'medalla', x + 6, y - 32, 38, C.lima)
-  ctx.font = `600 48px ${DISPLAY}`
-  ctx.fillStyle = C.lima
-  ctx.fillText(recortar(ctx, cat.categoria || 'Categoría', anchoTexto - sangria), x + sangria, y + 6)
-  y += 6
-  // fechas: mismo tamaño que la categoría
+  // fechas
   if (fechas) {
-    icono(ctx, 'calendario', x + 6, y + 18, 38, C.lima)
+    icono(ctx, 'calendario', x + 6, y - 32, 38, C.lima)
     ctx.font = `600 48px ${DISPLAY}`
     ctx.fillStyle = C.blanco
-    ctx.fillText(recortar(ctx, fechas, anchoTexto - sangria), x + sangria, y + 56)
-    y += 58
-  }
-  if (insc) {
-    icono(ctx, 'ticket', x + 10, y + 16, 30, C.lima)
+    ctx.fillText(recortar(ctx, fechas, anchoTexto - sangria), x + sangria, y + 6)
+    y += 6
+  } else y -= 50
+  // inscripción y premio: mismo tamaño
+  for (const [texto, ic] of [[insc, 'ticket'], [premio, 'premio']] as const) {
+    if (!texto) continue
+    icono(ctx, ic, x + 10, y + 16, 30, C.lima)
     ctx.font = `600 30px ${TEXTO}`
     ctx.fillStyle = 'rgba(255,255,255,0.9)'
-    ctx.fillText(recortar(ctx, insc, anchoTexto - sangria), x + sangria, y + 42)
+    ctx.fillText(recortar(ctx, texto, anchoTexto - sangria), x + sangria, y + 42)
+    y += 44
   }
   return alto
 }
@@ -214,10 +215,7 @@ function tarjetaZona(ctx: CanvasRenderingContext2D, cat: Categoria, zi: number, 
     if (!h?.hora) return '—'
     return unDia || !h.fecha ? h.hora : `${textoHorario({ fecha: h.fecha, hora: '' }).slice(0, 3)} ${h.hora}`
   }
-  const sede = (k: number) => {
-    const s = cat.horariosZona[partidos[k]?.key]?.sede
-    return s ? sedeCorta(s) : ''
-  }
+  const sede = (k: number) => cat.horariosZona[partidos[k]?.key]?.sede ?? ''
   const cNum = 48, cPart = 84, cHora = unDia ? 118 : 132
   const cPar = ancho - cNum - cPart - cHora
   const filas = Math.max(zona.length, partidos.length)
@@ -267,7 +265,11 @@ function tarjetaZona(ctx: CanvasRenderingContext2D, cat: Categoria, zi: number, 
           const sd = sede(k)
           c.fillText(hora(k), x + cNum + cPar + cPart + cHora / 2, sd ? mid - 2 : mid + 9)
           if (sd) {
-            c.font = `600 16px ${TEXTO}`; c.fillStyle = C.lima
+            // nombre completo del complejo ("EL CLÁSICO 2"); achica la letra si no entra
+            let ts = 16
+            c.font = `700 ${ts}px ${TEXTO}`
+            while (ts > 11 && c.measureText(sd.toUpperCase()).width > cHora - 10) { ts--; c.font = `700 ${ts}px ${TEXTO}` }
+            c.fillStyle = C.lima
             c.fillText(sd.toUpperCase(), x + cNum + cPar + cPart + cHora / 2, mid + 20)
           }
         }
@@ -490,7 +492,7 @@ export async function imagenPlayoff(cat: Categoria): Promise<Blob> {
     const tx = MARGEN + 36 + 72 + 30
     ctx.fillStyle = C.lima
     ctx.font = `700 30px ${DISPLAY}`
-    ctx.fillText(`CAMPEONES · ${(cat.categoria || '').toUpperCase()}`, tx, y + 50)
+    ctx.fillText('CAMPEONES', tx, y + 50)
     ctx.fillStyle = C.blanco
     let t = 52
     ctx.font = `700 ${t}px ${DISPLAY}`
@@ -502,4 +504,4 @@ export async function imagenPlayoff(cat: Categoria): Promise<Blob> {
 }
 
 export const nombreArchivo = (cat: Categoria, tipo: string) =>
-  `${[cat.torneo, cat.categoria, tipo].filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]+/g, '').trim() || 'torneo'}.png`
+  `${[cat.torneo, tipo].filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]+/g, '').trim() || 'torneo'}.png`

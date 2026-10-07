@@ -65,14 +65,14 @@ export function htmlCronograma(cat: Categoria, logo: string | null, colores: { o
   }).join('')
 
   const datos = [
-    cat.categoria && `<strong>${esc(cat.categoria)}</strong>`,
-    rangoFechas(cat.fechaInicio, cat.fechaFin) && esc(rangoFechas(cat.fechaInicio, cat.fechaFin)),
+    rangoFechas(cat.fechaInicio, cat.fechaFin) && `<strong>${esc(rangoFechas(cat.fechaInicio, cat.fechaFin))}</strong>`,
     cat.inscripcion && `Inscripción ${esc(formatoPesos(cat.inscripcion))} por jugador`,
+    cat.premio && `Premio: ${esc(cat.premio)}`,
   ].filter(Boolean).join(' · ')
 
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
-<title>Partidos · ${esc(cat.torneo)} · ${esc(cat.categoria)}</title>
+<title>Partidos · ${esc(cat.torneo)}</title>
 <style>
   @page { size: A4 portrait; margin: 12mm; }
   * { box-sizing: border-box; }

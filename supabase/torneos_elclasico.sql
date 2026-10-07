@@ -30,7 +30,7 @@ grant execute on function public.torneos_elclasico_es_usuario() to authenticated
 create table if not exists public.torneos_elclasico_torneos (
   id            uuid primary key default gen_random_uuid(),
   nombre        text not null default '',
-  categoria     text not null default '',
+  premio        text not null default '',
   fecha_inicio  date,
   fecha_fin     date,
   inscripcion   integer check (inscripcion is null or inscripcion >= 0),

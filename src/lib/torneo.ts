@@ -19,18 +19,19 @@ export interface Pareja {
 /** Un lado de primera ronda del playoff: posición `pos` de la zona número `zona` (0 = A) */
 export interface Slot { zona: number; pos: number }
 
-/** Un torneo (de una categoría): datos, parejas, zonas y playoff */
+/** Un torneo: datos, parejas, zonas y playoff (el nombre ya incluye la categoría: "7ma Caballeros – Primavera") */
 export interface Categoria {
   id: string
   torneo: string
   /** YYYY-MM-DD */
   fechaInicio: string
   fechaFin: string
-  categoria: string
   /** texto libre: formato de partidos, reglas, etc. */
   observacion: string
   /** monto de inscripción por jugador, solo dígitos ("17000"); vacío = no se muestra */
   inscripcion: string
+  /** texto libre del premio ("50% de lo recaudado"); vacío = no se muestra */
+  premio: string
   parejas: Pareja[]
   /** ids de parejas por zona, en orden de posición (en zonas de 4: 1 vs 4 y 2 vs 3) */
   zonas: string[][]
@@ -88,13 +89,19 @@ export interface Resultado { a: string; b: string; sets: [number, number][]; wo?
 
 export const LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 /** Completa campos que no existían en torneos guardados con versiones anteriores */
-export const normalizar = (c: Categoria): Categoria => ({
-  ...c,
-  fechaInicio: c.fechaInicio ?? '', fechaFin: c.fechaFin ?? '', observacion: c.observacion ?? '', inscripcion: c.inscripcion ?? '',
-  horariosZona: c.horariosZona ?? {}, horariosPlayoff: c.horariosPlayoff ?? {},
-  formatos: { ...FORMATOS_DEFECTO, ...(c.formatos ?? {}) },
-  resultadosZona: c.resultadosZona ?? {}, resultadosPlayoff: c.resultadosPlayoff ?? {}, desempates: c.desempates ?? {},
-})
+export function normalizar(c: Categoria): Categoria {
+  // versiones anteriores tenían "categoria" aparte: se suma al nombre
+  const { categoria, ...resto } = c as Categoria & { categoria?: string }
+  const torneo = [c.torneo, categoria].map((x) => x?.trim()).filter(Boolean).join(' - ')
+  return {
+    ...resto,
+    torneo,
+    fechaInicio: c.fechaInicio ?? '', fechaFin: c.fechaFin ?? '', observacion: c.observacion ?? '', inscripcion: c.inscripcion ?? '', premio: c.premio ?? '',
+    horariosZona: c.horariosZona ?? {}, horariosPlayoff: c.horariosPlayoff ?? {},
+    formatos: { ...FORMATOS_DEFECTO, ...(c.formatos ?? {}) },
+    resultadosZona: c.resultadosZona ?? {}, resultadosPlayoff: c.resultadosPlayoff ?? {}, desempates: c.desempates ?? {},
+  }
+}
 
 /** "17000" → "$17.000" */
 export const formatoPesos = (v: string) => (v ? `$${Number(v).toLocaleString('es-AR')}` : '')
@@ -115,17 +122,11 @@ export const esUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 
 export function nuevaCategoria(): Categoria {
   return {
-    id: nuevoId(), torneo: '', fechaInicio: '', fechaFin: '', categoria: '', observacion: '', inscripcion: '', parejas: [], zonas: [],
+    id: nuevoId(), torneo: '', fechaInicio: '', fechaFin: '', observacion: '', inscripcion: '', premio: '', parejas: [], zonas: [],
     horariosZona: {}, cuadro: null, horariosPlayoff: {}, formatos: { ...FORMATOS_DEFECTO }, resultadosZona: {}, resultadosPlayoff: {}, desempates: {},
     actualizado: Date.now(),
   }
 }
-
-export const CATEGORIAS_SUGERIDAS = [
-  ...['3ra', '4ta', '5ta', '6ta', '7ma'].map((c) => `${c} Caballeros`),
-  ...['4ta', '5ta', '6ta', '7ma'].map((c) => `${c} Damas`),
-  ...[8, 9, 10, 11, 12, 13, 14].flatMap((s) => [`Suma ${s} Caballeros`, `Suma ${s} Damas`, `Suma ${s} Mixto`]),
-]
 
 /** "JUaN  perez" → "Juan Perez" (también "maría-josé" → "María-José") */
 export function nombrePropio(t: string): string {
@@ -352,6 +353,16 @@ export function textoHorario(h: Horario | undefined, corto = false): string {
   return partes.join(' · ')
 }
 export const horarioCompleto = (h: Horario | undefined) => !!h?.fecha && !!h?.hora && !!h?.sede
+
+const dos = (n: number) => String(n).padStart(2, '0')
+/** Hoy en hora local ("YYYY-MM-DD"; toISOString da la fecha UTC, que después de las 21 ya es mañana) */
+export const hoyLocal = () => { const d = new Date(); return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}` }
+/** ¿Esa fecha (y hora, si está) ya pasó? Sin hora, cuenta como pasada solo si el día es anterior a hoy */
+export function enPasado(fecha: string, hora?: string): boolean {
+  if (!fecha) return false
+  if (!hora) return fecha < hoyLocal()
+  return new Date(`${fecha}T${hora}:00`).getTime() < Date.now()
+}
 
 /** Suma minutos a una fecha/hora local "YYYY-MM-DD" + "HH:MM" */
 export function sumarMinutos(fecha: string, hora: string, min: number): { fecha: string; hora: string } {

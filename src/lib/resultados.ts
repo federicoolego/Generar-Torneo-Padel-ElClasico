@@ -333,3 +333,19 @@ export function textoFormatos(cat: Categoria, instancias: Instancia[]): string {
     return `${lista}: ${d}.`
   }).join(' ')
 }
+
+// ------------------------------------------------------------------ bloqueos por resultados cargados
+
+/** ¿Hay algún resultado de playoff? (desde ahí no se tocan ni los cruces ni las zonas) */
+export const playoffIniciado = (cat: Categoria) => Object.keys(cat.resultadosPlayoff).length > 0
+
+/** Zonas que ya no se pueden modificar: las que tienen algún resultado (o todas, si arrancó el playoff) */
+export function zonasBloqueadas(cat: Categoria): boolean[] {
+  const todas = playoffIniciado(cat)
+  return cat.zonas.map((_, zi) => todas || Object.keys(cat.resultadosZona).some((k) => k.startsWith(`${zi}-`)))
+}
+
+/** Claves de partido (horariosZona / horariosPlayoff) que ya tienen resultado: su horario no se reprograma */
+export function clavesJugadas(cat: Categoria): { zona: Set<string>; playoff: Set<string> } {
+  return { zona: new Set(Object.keys(cat.resultadosZona)), playoff: new Set(Object.keys(cat.resultadosPlayoff)) }
+}

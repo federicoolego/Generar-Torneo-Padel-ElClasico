@@ -25,15 +25,14 @@ export default function Instructivo() {
           <div>
             <p className="mb-2 font-semibold text-noche">Armar un torneo, paso a paso</p>
             <ol className="list-decimal space-y-1.5 pl-5">
-              <li><strong>Torneo:</strong> nombre, fechas, categoría y, si querés, el valor de la inscripción y una observación (formato de partidos, reglas).</li>
+              <li><strong>Torneo:</strong> nombre (con la categoría, como lo publica el complejo), fechas y, si querés, inscripción, premio, formato de partido por instancia y una observación.</li>
               <li><strong>Parejas:</strong> se inscriben de a una (mínimo 6, máximo 24). Si tienen problemas de horario, anotalos: te van a aparecer resaltados al armar las zonas.</li>
-              <li><strong>Zonas:</strong> sorteo automático y después acomodás a mano lo que necesites.</li>
-              <li><strong>Horarios:</strong> día y hora de cada partido de zona (con “Completar automático” se reparten solos).</li>
-              <li><strong>Playoff:</strong> el cuadro se arma solo con los clasificados (1° Zona A vs 2° Zona B…) y le ponés día y hora a la primera ronda.</li>
-              <li><strong>Imágenes:</strong> zonas y playoff listas para compartir por WhatsApp (también con el botón verde de abajo a la derecha).</li>
-              <li><strong>Partidos:</strong> cargás los resultados; las posiciones de cada zona y los cruces del playoff se completan solos. También está el cronograma en PDF con los resultados.</li>
+              <li><strong>Zonas:</strong> sorteo automático, acomodás a mano lo que necesites y le ponés día, hora y complejo a cada partido (con “Completar automático” se reparten solos). Una zona con resultados ya no se puede modificar.</li>
+              <li><strong>Playoff:</strong> el cuadro se arma solo con los clasificados (1° Zona A vs 2° Zona B…) y le ponés día y hora a la primera ronda. Con el primer resultado de playoff, los cruces quedan fijos.</li>
+              <li><strong>Partidos:</strong> cargás los resultados; las posiciones de cada zona y los cruces del playoff se completan solos. Los partidos que faltan se pueden reprogramar (siempre a una fecha y hora futuras). También está el cronograma en PDF con los resultados.</li>
+              <li><strong>Imágenes:</strong> zonas y playoff (con nombres y resultados a medida que se cargan) listas para compartir por WhatsApp (también con el botón verde de abajo a la derecha).</li>
             </ol>
-            <p className="mt-2 text-xs text-noche/60">Cada categoría es un torneo aparte. Para otra categoría del mismo torneo, usá “Duplicar” y cambiá la categoría y las parejas.</p>
+            <p className="mt-2 text-xs text-noche/60">Cada categoría es un torneo aparte. Para otra categoría, usá “Duplicar” y cambiá el nombre y las parejas.</p>
           </div>
           <div className="space-y-3">
             <div className="rounded-lg bg-cancha-suave/60 p-3 ring-1 ring-cancha/15">

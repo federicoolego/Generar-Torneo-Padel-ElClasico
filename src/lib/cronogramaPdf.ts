@@ -31,7 +31,7 @@ export function pdfCronograma(
   doc.setTextColor(...rgb(colores.oscuro))
   doc.setFont('helvetica', 'bold'); doc.setFontSize(18)
   doc.text(cat.torneo || 'Torneo', x, M + 7, { maxWidth: ancho - x - M })
-  const datos = [cat.categoria, rangoFechas(cat.fechaInicio, cat.fechaFin), cat.inscripcion ? `Inscripción ${formatoPesos(cat.inscripcion)} por jugador` : '']
+  const datos = [rangoFechas(cat.fechaInicio, cat.fechaFin), cat.inscripcion ? `Inscripción ${formatoPesos(cat.inscripcion)} por jugador` : '', cat.premio ? `Premio: ${cat.premio}` : '']
     .filter(Boolean).join('  ·  ')
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(40, 40, 40)
   doc.text(datos, x, M + 13.5, { maxWidth: ancho - x - M })
@@ -85,7 +85,7 @@ export function pdfCronograma(
   for (let i = 1; i <= n; i++) {
     doc.setPage(i)
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120, 120, 120)
-    doc.text(`Cronograma de partidos · ${cat.torneo} · ${cat.categoria}`, M, 290)
+    doc.text(`Cronograma de partidos · ${cat.torneo}`, M, 290)
     doc.text(`Hoja ${i} de ${n}`, ancho - M, 290, { align: 'right' })
     // marca de agua
     doc.setFontSize(7.5); doc.setTextColor(160, 160, 160)

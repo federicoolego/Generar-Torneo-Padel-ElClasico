@@ -9,11 +9,11 @@ import { Alerta, Button, Modal, Spinner } from '../components/ui'
 import Compartir from '../components/Compartir'
 import { PasoDatos, PasoParejas } from '../components/pasos/Datos'
 import PasoZonas from '../components/pasos/Zonas'
-import PasoHorariosZona from '../components/pasos/HorariosZona'
 import PasoPlayoff from '../components/pasos/Playoff'
 import PasoPartidos from '../components/pasos/Partidos'
 
-const PASOS = ['Torneo', 'Parejas', 'Zonas', 'Horarios', 'Playoff', 'Imágenes', 'Partidos'] as const
+// Imágenes va última y separada a la derecha
+const PASOS = ['Torneo', 'Parejas', 'Zonas', 'Playoff', 'Partidos', 'Imágenes'] as const
 
 export default function Editor({ id, onVolver }: { id: string; onVolver: () => void }) {
   const [cat, setCat] = useState<Categoria | null>(null)
@@ -58,7 +58,7 @@ export default function Editor({ id, onVolver }: { id: string; onVolver: () => v
 
   // estado de cada paso
   const estado = useMemo(() => {
-    if (!cat) return { ok: PASOS.map(() => false), avisos: [] as string[] }
+    if (!cat) return { ok: PASOS.map(() => false), listo: [false, false, false], avisos: [] as string[] }
     const ubicadas = new Set(cat.zonas.flat())
     const zonasOk = cat.zonas.length > 0 && cat.zonas.every((z) => z.length === 3 || z.length === 4) &&
       cat.parejas.every((p) => ubicadas.has(p.id)) && cat.zonas.flat().length === ubicadas.size
@@ -70,13 +70,18 @@ export default function Editor({ id, onVolver }: { id: string; onVolver: () => v
     const terminado = cuadroOk && !!resolverTorneo(cat).campeon
     return {
       ok: [
-        !!cat.torneo.trim() && !!cat.categoria.trim() && !!cat.fechaInicio && !!cat.fechaFin && cat.fechaFin >= cat.fechaInicio,
+        !!cat.torneo.trim() && !!cat.fechaInicio && !!cat.fechaFin && cat.fechaFin >= cat.fechaInicio,
         cat.parejas.length >= MIN_PAREJAS && cat.parejas.length <= MAX_PAREJAS,
-        zonasOk,
         zonasOk && sinHorarioZ === 0,
         cuadroOk && sinHorarioP === 0,
-        zonasOk,
         terminado,
+        zonasOk,
+      ],
+      // lo mínimo para avanzar: torneo, parejas y zonas armadas (los horarios se pueden completar después)
+      listo: [
+        !!cat.torneo.trim() && !!cat.fechaInicio && !!cat.fechaFin && cat.fechaFin >= cat.fechaInicio,
+        cat.parejas.length >= MIN_PAREJAS && cat.parejas.length <= MAX_PAREJAS,
+        zonasOk,
       ],
       avisos: [
         ...(sinHorarioZ ? [`Faltan día, horario o complejo en ${sinHorarioZ} partido(s) de zona.`] : []),
@@ -97,7 +102,7 @@ export default function Editor({ id, onVolver }: { id: string; onVolver: () => v
   if (!cat) return <Spinner texto="Cargando torneo…" />
 
   // se puede ir a un paso si los anteriores obligatorios (1 a 3) están completos
-  const habilitado = (i: number) => i <= 2 ? estado.ok.slice(0, i).every(Boolean) : estado.ok.slice(0, 3).every(Boolean)
+  const habilitado = (i: number) => (i <= 2 ? estado.listo.slice(0, i) : estado.listo).every(Boolean)
 
   return (
     <>
@@ -107,13 +112,13 @@ export default function Editor({ id, onVolver }: { id: string; onVolver: () => v
       </div>
       <h1 className="font-display text-4xl font-bold leading-none">{cat.torneo || 'Nuevo torneo'}</h1>
       <p className="mb-5 mt-1 text-sm text-noche/60">
-        {[cat.categoria || 'Sin categoría', rangoFechas(cat.fechaInicio, cat.fechaFin), `${cat.parejas.length} parejas`].filter(Boolean).join(' · ')}
+        {[rangoFechas(cat.fechaInicio, cat.fechaFin), `${cat.parejas.length} parejas`].filter(Boolean).join(' · ')}
       </p>
 
       <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl bg-white p-1 ring-1 ring-noche/10" aria-label="Pasos">
         {PASOS.map((t, i) => (
           <button key={t} onClick={() => habilitado(i) && setPaso(i)} disabled={!habilitado(i)} aria-current={paso === i ? 'step' : undefined}
-            className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-35 ${paso === i ? 'bg-noche text-white' : 'text-noche/70 hover:bg-vidrio'}`}>
+            className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-35 ${i === PASOS.length - 1 ? 'ml-auto' : ''} ${paso === i ? 'bg-noche text-white' : 'text-noche/70 hover:bg-vidrio'}`}>
             <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] ${estado.ok[i] ? 'bg-pelota text-noche' : paso === i ? 'bg-white/20' : 'bg-noche/10'}`}>
               {estado.ok[i] ? <Check className="h-3 w-3" /> : i + 1}
             </span>
@@ -125,10 +130,9 @@ export default function Editor({ id, onVolver }: { id: string; onVolver: () => v
       {paso === 0 && <PasoDatos cat={cat} cambiar={cambiar} />}
       {paso === 1 && <PasoParejas cat={cat} cambiar={cambiar} />}
       {paso === 2 && <PasoZonas cat={cat} cambiar={cambiar} />}
-      {paso === 3 && <PasoHorariosZona cat={cat} cambiar={cambiar} />}
-      {paso === 4 && <PasoPlayoff cat={cat} cambiar={cambiar} />}
+      {paso === 3 && <PasoPlayoff cat={cat} cambiar={cambiar} />}
+      {paso === 4 && <PasoPartidos cat={cat} cambiar={cambiar} onRecargar={recargar} />}
       {paso === 5 && <Compartir cat={cat} avisos={estado.avisos} />}
-      {paso === 6 && <PasoPartidos cat={cat} cambiar={cambiar} onRecargar={recargar} />}
 
       <div className="mt-8 flex justify-between gap-3">
         <Button variante="secundario" onClick={() => setPaso(paso - 1)} disabled={paso === 0}><ArrowLeft className="h-4 w-4" aria-hidden /> Anterior</Button>
@@ -140,8 +144,8 @@ export default function Editor({ id, onVolver }: { id: string; onVolver: () => v
       {/* Botón flotante: generar y compartir las imágenes */}
       <button
         onClick={() => setCompartir(true)}
-        disabled={!estado.ok[2]}
-        title={estado.ok[2] ? 'Generar y compartir imágenes' : 'Armá las zonas para generar las imágenes'}
+        disabled={!estado.listo[2]}
+        title={estado.listo[2] ? 'Generar y compartir imágenes' : 'Armá las zonas para generar las imágenes'}
         aria-label="Generar y compartir imágenes"
         className="fixed bottom-6 right-6 z-40 grid h-16 w-16 place-items-center rounded-full bg-[#1FA855] text-white shadow-xl ring-4 ring-white transition hover:scale-105 disabled:bg-noche/30 disabled:hover:scale-100"
         style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}

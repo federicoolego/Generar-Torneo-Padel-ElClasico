@@ -8,12 +8,12 @@ para WhatsApp y **cargar los resultados** (las posiciones de zona y los cruces s
 
 ## Flujo
 
-1. **Torneo:** nombre del torneo y categoría (7ma Damas, Suma 12 Mixto…).
+1. **Torneo:** nombre (incluye la categoría), fechas, inscripción, premio y formato por instancia.
 2. **Parejas:** se pegan una por línea o separadas por `;` (`Juan Pérez / Luis Gómez; Juan Galeano / Marcos Francés`).
 3. **Zonas:** sorteo aleatorio o por orden de carga, y después ajuste manual (mover de zona, cambiar la posición). Zonas de 3 o de 4.
 4. **Horarios de zona:** día, hora y **complejo** (El Clásico o El Clásico 2, obligatorio) de cada partido. "Completar automático" los reparte en turnos.
 5. **Playoff:** "Armar automático" (1° de zona primero, después 2° y 3°, sin cruces de la misma zona) y ajuste manual de cada cruce ("1° Zona A vs 2° Zona D"). El horario es obligatorio en la primera ronda.
-6. **Imágenes:** zonas (una o varias imágenes, según la cantidad) y playoff, con logo, torneo y categoría.
+6. **Imágenes:** zonas (una o varias imágenes, según la cantidad) y playoff, con logo, nombre, fechas, inscripción y premio; el playoff se va completando con nombres y resultados.
 7. **Partidos:** carga de resultados validados según el formato de cada instancia (mejor de 3, mejor de 3 con
    super tiebreak, americano a 7 o a 9 games), tablas de zona, avance del cuadro y campeón. Cronograma en PDF con los resultados.
 

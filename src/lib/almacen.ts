@@ -11,7 +11,7 @@ import {
 // ------------------------------------------------------------------ filas
 
 interface FilaTorneo {
-  id: string; nombre: string; categoria: string; fecha_inicio: string | null; fecha_fin: string | null
+  id: string; nombre: string; premio: string; fecha_inicio: string | null; fecha_fin: string | null
   inscripcion: number | null; observacion: string; cant_zonas: number; cuadro: (Slot | null)[][] | null; desempates: Record<string, string[]>
 }
 interface FilaPareja { id: string; torneo_id: string; orden: number; jugador1: string; jugador2: string; horario: string; zona: number | null; posicion: number | null }
@@ -26,7 +26,7 @@ function aFilas(c: Categoria): Filas {
   const ids = new Set(c.parejas.map((p) => p.id))
   const valido = (id: string | undefined | null) => (id && ids.has(id) ? id : null)
   const torneo: FilaTorneo = {
-    id: c.id, nombre: c.torneo, categoria: c.categoria, fecha_inicio: c.fechaInicio || null, fecha_fin: c.fechaFin || null,
+    id: c.id, nombre: c.torneo, premio: c.premio, fecha_inicio: c.fechaInicio || null, fecha_fin: c.fechaFin || null,
     inscripcion: c.inscripcion ? Number(c.inscripcion) : null, observacion: c.observacion, cant_zonas: c.zonas.length,
     cuadro: c.cuadro, desempates: c.desempates,
   }
@@ -71,7 +71,7 @@ function desdeFilas(t: FilaTorneo & { actualizado?: string }, ps: FilaPareja[], 
   const formatos = { ...FORMATOS_DEFECTO }
   for (const i of is) formatos[i.instancia] = i.formato
   const c: Categoria = {
-    id: t.id, torneo: t.nombre, categoria: t.categoria, fechaInicio: t.fecha_inicio ?? '', fechaFin: t.fecha_fin ?? '',
+    id: t.id, torneo: t.nombre, premio: t.premio ?? '', fechaInicio: t.fecha_inicio ?? '', fechaFin: t.fecha_fin ?? '',
     inscripcion: t.inscripcion != null ? String(t.inscripcion) : '', observacion: t.observacion,
     parejas: parejas.map((p) => ({ id: p.id, nombre: `${p.jugador1} / ${p.jugador2}`, jugador1: p.jugador1, jugador2: p.jugador2, horario: p.horario })),
     zonas, cuadro: t.cuadro, desempates: t.desempates ?? {}, formatos,
@@ -199,18 +199,18 @@ export async function guardarAhora(c: Categoria) {
 // ------------------------------------------------------------------ lectura
 
 export interface ResumenTorneo {
-  id: string; torneo: string; categoria: string; fechaInicio: string; fechaFin: string
+  id: string; torneo: string; fechaInicio: string; fechaFin: string
   parejas: number; zonas: number; playoff: boolean; actualizado: number
 }
 
 export async function listar(): Promise<ResumenTorneo[]> {
   const { data, error } = await supabase
     .from(T.torneos)
-    .select(`id, nombre, categoria, fecha_inicio, fecha_fin, cant_zonas, cuadro, actualizado, parejas:${T.parejas}(count)`)
+    .select(`id, nombre, fecha_inicio, fecha_fin, cant_zonas, cuadro, actualizado, parejas:${T.parejas}(count)`)
     .order('actualizado', { ascending: false })
   if (error) throw new Error(error.message)
   return ((data ?? []) as unknown as (FilaTorneo & { actualizado: string; parejas: { count: number }[] })[]).map((t) => ({
-    id: t.id, torneo: t.nombre, categoria: t.categoria, fechaInicio: t.fecha_inicio ?? '', fechaFin: t.fecha_fin ?? '',
+    id: t.id, torneo: t.nombre, fechaInicio: t.fecha_inicio ?? '', fechaFin: t.fecha_fin ?? '',
     parejas: t.parejas?.[0]?.count ?? 0, zonas: t.cant_zonas, playoff: !!t.cuadro, actualizado: Date.parse(t.actualizado),
   }))
 }

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, Download, FileText, Pencil, Printer, RefreshCw, Share2, Trash2, Trophy } from 'lucide-react'
+import { ArrowDown, ArrowUp, CalendarClock, Download, FileText, Pencil, Printer, RefreshCw, Share2, Trash2, Trophy } from 'lucide-react'
 import { LETRAS, nombreFormato, nombreInstancia, textoHorario, type Categoria, type Horario, type Resultado } from '../../lib/torneo'
 import { esAmericano, evaluar, resolverTorneo, setsMax, textoResultado, type Partido, type ZonaResuelta } from '../../lib/resultados'
 import { docWord, filasCronograma, htmlCronograma, logoPng } from '../../lib/cronograma'
 import { logoUrl } from '../../App'
 import { Alerta, Button, Card } from '../ui'
 import { SelectorFormato } from '../Formato'
+import { EditorHorario } from '../Horarios'
 
 // Colores del documento (los de la marca del complejo)
 const COLORES = { oscuro: '#0D053E', acento: '#D2DA1F', suave: '#F2F1F8' }
@@ -27,6 +28,11 @@ export default function PasoPartidos({ cat, cambiar, onRecargar }: Props) {
       else delete nuevo[p.key]
       return { ...c, [campo]: nuevo }
     })
+  /** Reprogramar: mismo partido (mismos rivales), otro día/hora/complejo */
+  const setHorario = (p: Partido, h: Horario) =>
+    cambiar((c) => (p.tipo === 'zona'
+      ? { ...c, horariosZona: { ...c.horariosZona, [p.key]: h } }
+      : { ...c, horariosPlayoff: { ...c.horariosPlayoff, [p.key]: h } }))
 
   const jugados = [...res.zonas.flatMap((z) => z.partidos), ...(res.playoff ?? []).flat()].filter((p) => p.estado === 'jugado').length
   const total = [...res.zonas.flatMap((z) => z.partidos), ...(res.playoff ?? []).flat()].filter((p) => !p.bye).length
@@ -48,7 +54,7 @@ export default function PasoPartidos({ cat, cambiar, onRecargar }: Props) {
         <div className="flex items-center gap-3 rounded-xl bg-noche p-4 text-white">
           <Trophy className="h-8 w-8 shrink-0 text-pelota" aria-hidden />
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-white/60">Campeones · {cat.categoria}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/60">Campeones</p>
             <p className="font-display text-2xl font-bold leading-tight">{nombre(res.campeon)}</p>
           </div>
         </div>
@@ -58,7 +64,7 @@ export default function PasoPartidos({ cat, cambiar, onRecargar }: Props) {
         <EncabezadoInstancia titulo="Zonas" cat={cat} cambiar={cambiar} instancia="zonas" />
         <div className="grid gap-4 lg:grid-cols-2">
           {res.zonas.map((z) => (
-            <ZonaCard key={z.zona} z={z} cat={cat} cambiar={cambiar} nombre={nombre} onResultado={setResultado} />
+            <ZonaCard key={z.zona} z={z} cat={cat} cambiar={cambiar} nombre={nombre} onResultado={setResultado} onHorario={setHorario} />
           ))}
         </div>
       </section>
@@ -74,7 +80,7 @@ export default function PasoPartidos({ cat, cambiar, onRecargar }: Props) {
               <EncabezadoInstancia titulo={nombreInstancia(ronda[0].instancia)} cat={cat} cambiar={cambiar} instancia={ronda[0].instancia} />
               <ul className="grid gap-3 md:grid-cols-2">
                 {visibles.map((p) => (
-                  <li key={p.key}><CargaPartido p={p} horario={cat.horariosPlayoff[p.key]} onGuardar={(r) => setResultado(p, r)} /></li>
+                  <li key={p.key}><CargaPartido p={p} horario={cat.horariosPlayoff[p.key]} onGuardar={(r) => setResultado(p, r)} onHorario={(h) => setHorario(p, h)} /></li>
                 ))}
               </ul>
             </section>
@@ -96,8 +102,9 @@ function EncabezadoInstancia({ titulo, cat, cambiar, instancia }: { titulo: stri
 
 // ------------------------------------------------------------------ zona: tabla + partidos
 
-function ZonaCard({ z, cat, cambiar, nombre, onResultado }: {
-  z: ZonaResuelta; cat: Categoria; cambiar: Cambiar; nombre: (id: string | null) => string; onResultado: (p: Partido, r: Resultado | null) => void
+function ZonaCard({ z, cat, cambiar, nombre, onResultado, onHorario }: {
+  z: ZonaResuelta; cat: Categoria; cambiar: Cambiar; nombre: (id: string | null) => string
+  onResultado: (p: Partido, r: Resultado | null) => void; onHorario: (p: Partido, h: Horario) => void
 }) {
   const { tabla } = z
   const clasifican = (cat.zonas[z.zona]?.length ?? 0) === 4 ? 3 : 2
@@ -139,7 +146,7 @@ function ZonaCard({ z, cat, cambiar, nombre, onResultado }: {
       )}
       <ul className="space-y-2 border-t border-noche/10 bg-vidrio/50 p-3">
         {z.partidos.map((p) => (
-          <li key={p.key}><CargaPartido p={p} horario={cat.horariosZona[p.key]} onGuardar={(r) => onResultado(p, r)} /></li>
+          <li key={p.key}><CargaPartido p={p} horario={cat.horariosZona[p.key]} onGuardar={(r) => onResultado(p, r)} onHorario={(h) => onHorario(p, h)} /></li>
         ))}
       </ul>
     </div>
@@ -177,8 +184,12 @@ const borradorDe = (r: Resultado | undefined, n: number): Borrador => ({
   wo: r?.wo ?? '',
 })
 
-function CargaPartido({ p, horario, onGuardar }: { p: Partido; horario: Horario | undefined; onGuardar: (r: Resultado | null) => void }) {
+function CargaPartido({ p, horario, onGuardar, onHorario }: {
+  p: Partido; horario: Horario | undefined; onGuardar: (r: Resultado | null) => void; onHorario: (h: Horario) => void
+}) {
   const [editando, setEditando] = useState(false)
+  const [reprogramando, setReprogramando] = useState(false)
+  const jugado = p.estado === 'jugado' || (p.estado === 'invalido' && !!p.resultado)
   const n = setsMax(p.formato)
   const [b, setB] = useState<Borrador>(() => borradorDe(p.resultado, n))
   useEffect(() => { if (!editando) setB(borradorDe(p.resultado, n)) }, [p.resultado, n, editando])
@@ -208,8 +219,22 @@ function CargaPartido({ p, horario, onGuardar }: { p: Partido; horario: Horario 
     <div className={`rounded-lg bg-white p-3 ring-1 ${p.estado === 'desactualizado' || p.estado === 'invalido' ? 'ring-amber-400' : 'ring-noche/10'}`}>
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 text-xs text-noche/55">
         <span className="font-semibold text-cancha">{p.titulo}</span>
-        <span>{textoHorario(horario, true)}</span>
+        <span className="flex items-center gap-2">
+          {textoHorario(horario, true)}
+          {!jugado && !editando && (
+            <button onClick={() => setReprogramando(!reprogramando)} title="Reprogramar" aria-label="Reprogramar"
+              className={`rounded p-0.5 hover:bg-cancha-suave ${reprogramando ? 'text-cancha' : 'text-noche/45'}`}>
+              <CalendarClock className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </span>
       </div>
+      {reprogramando && !jugado && (
+        <div className="mb-2 space-y-1 rounded-md bg-vidrio p-2">
+          <p className="text-[11px] font-semibold text-noche/60">Reprogramar (mismos rivales, fecha y hora futuras)</p>
+          <EditorHorario valor={horario} onChange={onHorario} />
+        </div>
+      )}
 
       {!editando ? (
         <div className="flex items-center gap-3">
@@ -308,7 +333,7 @@ function Cronograma({ cat }: { cat: Categoria }) {
   const filas = useMemo(() => filasCronograma(cat), [cat])
   const html = useMemo(() => htmlCronograma(cat, logo, COLORES), [cat, logo])
   const sinHorario = filas.filter((f) => !f.fecha || !f.hora).length
-  const nombreArchivo = `Partidos - ${[cat.torneo, cat.categoria].filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]+/g, '')}`
+  const nombreArchivo = `Partidos - ${[cat.torneo].filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]+/g, '')}`
   const [verPrevia, setVerPrevia] = useState(false)
   // el PDF se arma de antemano: compartir tiene que ejecutarse enseguida después del toque
   const [pdf, setPdf] = useState<File | null>(null)
@@ -337,7 +362,7 @@ function Cronograma({ cat }: { cat: Categoria }) {
   async function compartirPdf() {
     if (!pdf) return
     if (!puedeCompartir) return descargarPdf()
-    try { await navigator.share({ files: [pdf], title: `Partidos · ${cat.torneo} · ${cat.categoria}` }) } catch { /* canceló */ }
+    try { await navigator.share({ files: [pdf], title: `Partidos · ${cat.torneo}` }) } catch { /* canceló */ }
   }
   function imprimir() {
     const w = window.open('', '_blank')
