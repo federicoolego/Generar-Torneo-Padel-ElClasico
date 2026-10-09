@@ -75,9 +75,9 @@ export const INSTANCIAS: { id: Instancia; nombre: string }[] = [
 ]
 export const nombreInstancia = (i: Instancia) => INSTANCIAS.find((x) => x.id === i)?.nombre ?? i
 
-/** Lo que más se juega: americano a 9 hasta cuartos; semi y final al mejor de 3 con super tiebreak */
+/** El clasico: todas las instancias en americano a 7 games */
 export const FORMATOS_DEFECTO: Record<Instancia, Formato> = {
-  zonas: 'americano_9', '16avos': 'americano_9', octavos: 'americano_9', cuartos: 'americano_9', semifinal: 'mejor_de_3_stb', final: 'mejor_de_3_stb',
+  zonas: 'americano_7', '16avos': 'americano_7', octavos: 'americano_7', cuartos: 'americano_7', semifinal: 'americano_7', final: 'americano_7',
 }
 
 /**
