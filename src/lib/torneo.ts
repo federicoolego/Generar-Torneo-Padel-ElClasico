@@ -120,6 +120,45 @@ export function nuevoId(): string {
 }
 export const esUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
 
+/** Complejo por defecto de los partidos nuevos */
+export const SEDE_DEFECTO = SEDES[0]
+
+/**
+ * Datos por defecto de los partidos que todavía no se jugaron (cuando las zonas ya están armadas):
+ * · torneo de un solo día → todos los partidos con ese día
+ * · complejo → El Clásico
+ * Devuelve el mismo objeto si no hay nada para completar (se puede llamar en cada cambio).
+ */
+export function precargarHorarios(c: Categoria): Categoria {
+  const unDia = !!c.fechaInicio && c.fechaInicio === c.fechaFin
+  const ubicadas = new Set(c.zonas.flat())
+  const zonasArmadas = c.zonas.length > 0 && c.zonas.every((z) => z.length === 3 || z.length === 4) &&
+    c.parejas.every((p) => ubicadas.has(p.id)) && c.zonas.flat().length === ubicadas.size
+  if (!zonasArmadas) return c
+
+  const completar = (horarios: Record<string, Horario>, claves: string[], jugados: Record<string, unknown>) => {
+    let out = horarios
+    for (const k of claves) {
+      if (jugados[k]) continue
+      const h = horarios[k]
+      const fecha = h?.fecha || (unDia ? c.fechaInicio : '')
+      const sede = h?.sede || SEDE_DEFECTO
+      if (fecha === (h?.fecha ?? '') && sede === (h?.sede ?? '')) continue
+      if (out === horarios) out = { ...horarios }
+      out[k] = { ...h, fecha, hora: h?.hora ?? '', sede }
+    }
+    return out
+  }
+
+  const clavesZona = c.zonas.flatMap((z, zi) => partidosDeZona(z, zi, () => '').map((p) => p.key))
+  const clavesPlayoff = c.cuadro && erroresCuadro(c.cuadro, c.zonas).length === 0
+    ? rondasPlayoff(c.cuadro).flat().filter((p) => !p.bye).map((p) => p.key)
+    : []
+  const hz = completar(c.horariosZona, clavesZona, c.resultadosZona)
+  const hp = completar(c.horariosPlayoff, clavesPlayoff, c.resultadosPlayoff)
+  return hz === c.horariosZona && hp === c.horariosPlayoff ? c : { ...c, horariosZona: hz, horariosPlayoff: hp }
+}
+
 /** Datos obligatorios del paso "Torneo": nombre y fechas (fin igual o posterior al inicio). Recién ahí se crea en la base */
 export const datosCompletos = (c: Pick<Categoria, 'torneo' | 'fechaInicio' | 'fechaFin'>) =>
   !!c.torneo.trim() && !!c.fechaInicio && !!c.fechaFin && c.fechaFin >= c.fechaInicio
