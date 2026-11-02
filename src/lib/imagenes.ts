@@ -1,5 +1,5 @@
 // Genera las imágenes (PNG) de zonas y playoff dibujando en un <canvas>
-import { LETRAS, diaLargo, formatoPesos, partidosDeZona, rangoFechas, rondasPlayoff, textoHorario, type Categoria } from './torneo'
+import { LETRAS, diaLargo, formatoPesos, inicioZona, partidosDeZona, rangoFechas, rondasPlayoff, sedeCorta, textoHorario, type Categoria } from './torneo'
 import { resolverTorneo } from './resultados'
 
 // Paleta de El Clásico (índigo del logo, azul del escudo y amarillo de la pelota)
@@ -202,28 +202,24 @@ function aBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 
 interface Tarjeta { alto: number; dibujar: (ctx: CanvasRenderingContext2D, x: number, y: number) => void }
 
-/** Zona como tabla: N° · Pareja · Partido · Horario (una fila por pareja y por partido) */
+/** Zona como tabla: N° · Pareja · Partido, con una franja de "cuándo empieza" (día, hora y complejo del primer partido) */
 function tarjetaZona(ctx: CanvasRenderingContext2D, cat: Categoria, zi: number, ancho: number): Tarjeta {
   const nombre = (id: string) => cat.parejas.find((p) => p.id === id)?.nombre ?? ''
   const zona = cat.zonas[zi]
   const partidos = partidosDeZona(zona, zi, nombre)
-  const fechas = [...new Set(partidos.map((p) => cat.horariosZona[p.key]?.fecha).filter(Boolean))] as string[]
-  const unDia = fechas.length === 1 && partidos.every((p) => cat.horariosZona[p.key]?.fecha === fechas[0])
-  const titulo = `ZONA ${LETRAS[zi]}${unDia ? ` · ${diaLargo(fechas[0]).toUpperCase()}` : ''}`
-  const hora = (k: number) => {
-    const h = cat.horariosZona[partidos[k]?.key]
-    if (!h?.hora) return '—'
-    return unDia || !h.fecha ? h.hora : `${textoHorario({ fecha: h.fecha, hora: '' }).slice(0, 3)} ${h.hora}`
-  }
-  const sede = (k: number) => cat.horariosZona[partidos[k]?.key]?.sede ?? ''
-  const cNum = 48, cPart = 84, cHora = unDia ? 118 : 132
-  const cPar = ancho - cNum - cPart - cHora
+  const titulo = `ZONA ${LETRAS[zi]}`
+  const ini = inicioZona(cat, zi)
+  const textoInicio = ini && (ini.fecha || ini.hora)
+    ? `EMPIEZA ${[ini.fecha ? textoHorario({ fecha: ini.fecha, hora: '' }) : '', ini.hora ? `${ini.hora} HS` : '', ini.sede ? sedeCorta(ini.sede) : ''].filter(Boolean).join(' · ')}`.toUpperCase()
+    : ''
+  const cNum = 48, cPart = 120
+  const cPar = ancho - cNum - cPart
   const filas = Math.max(zona.length, partidos.length)
   ctx.font = `600 23px ${TEXTO}`
   const nombresL = Array.from({ length: filas }, (_, k) => (zona[k] ? lineas(ctx, nombre(zona[k]), cPar - 24) : []))
   const altos = nombresL.map((l) => Math.max(60, l.length * 28 + 22))
-  const altoCab = 64, altoCols = 40
-  const alto = altoCab + altoCols + altos.reduce((a, b) => a + b, 0)
+  const altoCab = 64, altoInicio = textoInicio ? 46 : 0, altoCols = 40
+  const alto = altoCab + altoInicio + altoCols + altos.reduce((a, b) => a + b, 0)
   return {
     alto,
     dibujar: (c, x, y) => {
@@ -234,20 +230,28 @@ function tarjetaZona(ctx: CanvasRenderingContext2D, cat: Categoria, zi: number, 
       c.fillStyle = C.noche; c.fillRect(x, y, ancho, altoCab)
       c.fillStyle = C.blanco; c.font = `700 36px ${DISPLAY}`; c.textAlign = 'center'
       c.fillText(titulo, x + ancho / 2, y + 45)
+      // inicio de la zona
+      if (textoInicio) {
+        c.fillStyle = C.lima; c.fillRect(x, y + altoCab, ancho, altoInicio)
+        c.fillStyle = C.noche
+        let ts = 24
+        c.font = `700 ${ts}px ${TEXTO}`
+        while (ts > 14 && c.measureText(textoInicio).width > ancho - 24) { ts--; c.font = `700 ${ts}px ${TEXTO}` }
+        c.fillText(textoInicio, x + ancho / 2, y + altoCab + altoInicio / 2 + ts * 0.35)
+      }
       // encabezado de columnas
-      const yc = y + altoCab
+      const yc = y + altoCab + altoInicio
       c.fillStyle = C.verde; c.fillRect(x, yc, ancho, altoCols)
       c.fillStyle = C.blanco; c.font = `700 16px ${TEXTO}`
       c.fillText('N°', x + cNum / 2, yc + 27)
       c.fillText('PAREJA', x + cNum + cPar / 2, yc + 27)
       c.fillText('PARTIDO', x + cNum + cPar + cPart / 2, yc + 27)
-      c.fillText('HORARIO', x + cNum + cPar + cPart + cHora / 2, yc + 27)
       // filas
       let yy = yc + altoCols
       for (let k = 0; k < filas; k++) {
         const h = altos[k]
         const mid = yy + h / 2
-        if (k % 2 === 1) { c.fillStyle = '#F7FAF9'; c.fillRect(x, yy, cNum + cPar + cPart, h) }
+        if (k % 2 === 1) { c.fillStyle = '#F7FAF9'; c.fillRect(x, yy, ancho, h) }
         c.fillStyle = C.texto
         c.font = `700 24px ${TEXTO}`; c.textAlign = 'center'
         if (zona[k]) c.fillText(String(k + 1), x + cNum / 2, mid + 8)
@@ -258,20 +262,6 @@ function tarjetaZona(ctx: CanvasRenderingContext2D, cat: Categoria, zi: number, 
         if (partidos[k]) {
           c.font = `600 22px ${TEXTO}`; c.fillStyle = C.gris
           c.fillText(partidos[k].codigo, x + cNum + cPar + cPart / 2, mid + 8)
-          // horario destacado
-          c.fillStyle = C.verde
-          c.fillRect(x + cNum + cPar + cPart, yy, cHora, h)
-          c.fillStyle = C.blanco; c.font = `700 ${unDia ? 26 : 22}px ${TEXTO}`
-          const sd = sede(k)
-          c.fillText(hora(k), x + cNum + cPar + cPart + cHora / 2, sd ? mid - 2 : mid + 9)
-          if (sd) {
-            // nombre completo del complejo ("EL CLÁSICO 2"); achica la letra si no entra
-            let ts = 16
-            c.font = `700 ${ts}px ${TEXTO}`
-            while (ts > 11 && c.measureText(sd.toUpperCase()).width > cHora - 10) { ts--; c.font = `700 ${ts}px ${TEXTO}` }
-            c.fillStyle = C.lima
-            c.fillText(sd.toUpperCase(), x + cNum + cPar + cPart + cHora / 2, mid + 20)
-          }
         }
         c.textAlign = 'left'
         c.fillStyle = C.linea; c.fillRect(x, yy + h - 1, ancho, 1)
@@ -279,7 +269,7 @@ function tarjetaZona(ctx: CanvasRenderingContext2D, cat: Categoria, zi: number, 
       }
       // líneas verticales
       c.fillStyle = C.linea
-      for (const cx of [cNum, cNum + cPar, cNum + cPar + cPart]) c.fillRect(x + cx, yc + altoCols, 1, alto - altoCab - altoCols)
+      for (const cx of [cNum, cNum + cPar]) c.fillRect(x + cx, yc + altoCols, 1, alto - altoCab - altoInicio - altoCols)
       c.restore()
       c.strokeStyle = C.noche; c.lineWidth = 2
       c.beginPath(); c.roundRect(x, y, ancho, alto, 16); c.stroke()
@@ -290,25 +280,14 @@ function tarjetaZona(ctx: CanvasRenderingContext2D, cat: Categoria, zi: number, 
 /** "Viernes 25 desde las 17:15 · Sábado 26 desde las 12:30 · Clasifican 2 por zona de 3 y 3 por zona de 4" */
 function resumenZonas(cat: Categoria): string {
   const porDia = new Map<string, string>()
-  cat.zonas.forEach((z, zi) => partidosDeZona(z, zi, () => '').forEach((p) => {
-    const h = cat.horariosZona[p.key]
+  cat.zonas.forEach((_, zi) => {
+    const h = inicioZona(cat, zi)
     if (h?.fecha && h.hora && (!porDia.has(h.fecha) || h.hora < porDia.get(h.fecha)!)) porDia.set(h.fecha, h.hora)
-  }))
+  })
   const dias = [...porDia.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([f, h]) => `${diaLargo(f)} desde las ${h}`)
   const tam = new Set(cat.zonas.map((z) => z.length))
   const clas = [tam.has(3) ? '2 por zona de 3' : '', tam.has(4) ? '3 por zona de 4' : ''].filter(Boolean).join(' y ')
   return [...dias, clas ? `Clasifican ${clas}` : ''].filter(Boolean).join(' · ')
-}
-
-/** "Sábado 3 desde las 13:00 · Domingo 4 desde las 10:00" (primer partido de playoff de cada día) */
-function resumenPlayoff(cat: Categoria): string {
-  if (!cat.cuadro) return ''
-  const porDia = new Map<string, string>()
-  rondasPlayoff(cat.cuadro).flat().filter((p) => !p.bye).forEach((p) => {
-    const h = cat.horariosPlayoff[p.key]
-    if (h?.fecha && h.hora && (!porDia.has(h.fecha) || h.hora < porDia.get(h.fecha)!)) porDia.set(h.fecha, h.hora)
-  })
-  return [...porDia.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([f, h]) => `${diaLargo(f)} desde las ${h}`).join(' · ')
 }
 
 export async function imagenesZonas(cat: Categoria): Promise<Blob[]> {
@@ -376,13 +355,13 @@ export async function imagenPlayoff(cat: Categoria): Promise<Blob> {
   const R = visibles.length
   const gapX = 34
   const anchoCaja = (ANCHO - 2 * MARGEN - gapX * (R - 1)) / R
-  const altoCaja = 146
+  const altoCaja = 100
   const n0 = visibles[0].length
   const slot = Math.max(altoCaja + 26, n0 <= 2 ? 300 : 0)
   const altoBracket = n0 * slot
   const medir = document.createElement('canvas').getContext('2d')!
   const altoEnc = encabezado(medir, img, cat, 'Playoff', true)
-  const textos = [{ texto: resumenPlayoff(cat), fuerte: true }, { texto: cat.observacion }]
+  const textos = [{ texto: cat.observacion }]
   const altoBandas = bandas(medir, 0, textos, true)
   const topBracket = altoEnc + altoBandas + 48 + 50
   const altoCampeon = campeon ? 170 : 0
@@ -416,17 +395,6 @@ export async function imagenPlayoff(cat: Categoria): Promise<Blob> {
       const y = cy - altoCaja / 2
       const final = p.fase === 'Final'
       rect(ctx, x, y, anchoCaja, altoCaja, 14, C.blanco, final ? C.lima : undefined)
-      // horario
-      ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, anchoCaja, 56, [14, 14, 0, 0]); ctx.fillStyle = final ? C.lima : C.verdeSuave; ctx.fill(); ctx.restore()
-      ctx.fillStyle = C.noche
-      ctx.font = `700 ${tamLetra - 4}px ${TEXTO}`
-      const hp = cat.horariosPlayoff[p.key]
-      ctx.fillText(recortar(ctx, textoHorario(hp ? { fecha: hp.fecha, hora: hp.hora } : undefined, true), anchoCaja - 20), x + 10, y + 24)
-      // complejo, en una segunda línea
-      ctx.font = `700 ${tamLetra - 7}px ${TEXTO}`
-      ctx.fillStyle = final ? C.noche : C.verde
-      ctx.fillText(recortar(ctx, hp?.sede ? hp.sede.toUpperCase() : 'COMPLEJO A CONFIRMAR', anchoCaja - 20), x + 10, y + 47)
-
       // marcador: una columna por set (o "W.O." del lado ganador)
       const sets = jugado && !pr!.resultado!.wo ? pr!.resultado!.sets : null
       const wo = jugado && pr!.resultado!.wo ? pr!.resultado!.wo : null
@@ -434,7 +402,7 @@ export async function imagenPlayoff(cat: Categoria): Promise<Blob> {
       const anchoMarcador = sets ? sets.length * colSet + 4 : wo ? 54 : 0
 
       ;([0, 1] as const).forEach((k) => {
-        const ty = y + 56 + 22 + k * 42
+        const ty = y + 28 + k * 44
         const id = pr ? (k === 0 ? pr.a : pr.b) : null
         const texto = pr ? (k === 0 ? pr.etiquetaA : pr.etiquetaB) : k === 0 ? p.a : p.b
         const gano = jugado && id === pr!.ganador
@@ -467,7 +435,7 @@ export async function imagenPlayoff(cat: Categoria): Promise<Blob> {
         ctx.textAlign = 'left'
       })
       ctx.strokeStyle = C.linea; ctx.lineWidth = 1.5
-      ctx.beginPath(); ctx.moveTo(x + 10, y + 56 + 45); ctx.lineTo(x + anchoCaja - 10, y + 56 + 45); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(x + 10, y + 50); ctx.lineTo(x + anchoCaja - 10, y + 50); ctx.stroke()
       // conector con la ronda anterior
       if (r > 0) {
         const px = x - gapX

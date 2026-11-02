@@ -12,11 +12,11 @@ export function cambiarFormato(cat: Categoria, cambiar: Cambiar, instancia: Inst
 }
 
 /** Selector compacto de formato (se usa en el encabezado de cada instancia) */
-export function SelectorFormato({ cat, cambiar, instancia, className = '' }: { cat: Categoria; cambiar: Cambiar; instancia: Instancia; className?: string }) {
+export function SelectorFormato({ cat, cambiar, instancia, className = '', corto = false }: { cat: Categoria; cambiar: Cambiar; instancia: Instancia; className?: string; corto?: boolean }) {
   return (
     <Select value={cat.formatos[instancia]} onChange={(e) => cambiarFormato(cat, cambiar, instancia, e.target.value as Formato)}
       className={`w-auto py-1.5 text-sm ${className}`} aria-label={`Formato de ${INSTANCIAS.find((i) => i.id === instancia)?.nombre}`}>
-      {FORMATOS.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+      {FORMATOS.map((f) => <option key={f.id} value={f.id}>{corto ? f.corto : f.nombre}</option>)}
     </Select>
   )
 }

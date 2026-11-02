@@ -27,9 +27,8 @@ export default function Instructivo() {
             <ol className="list-decimal space-y-1.5 pl-5">
               <li><strong>Torneo:</strong> nombre (con la categoría, como lo publica el complejo), fechas y, si querés, inscripción, premio, formato de partido por instancia y una observación.</li>
               <li><strong>Parejas:</strong> se inscriben de a una (mínimo 6, máximo 24). Si tienen problemas de horario, anotalos: te van a aparecer resaltados al armar las zonas.</li>
-              <li><strong>Zonas:</strong> sorteo automático, acomodás a mano lo que necesites y le ponés día, hora y complejo a cada partido (con “Completar automático” se reparten solos). Una zona con resultados ya no se puede modificar.</li>
-              <li><strong>Playoff:</strong> el cuadro se arma solo con los clasificados (1° Zona A vs 2° Zona B…) y le ponés día y hora a la primera ronda. Con el primer resultado de playoff, los cruces quedan fijos.</li>
-              <li><strong>Partidos:</strong> cargás los resultados; las posiciones de cada zona y los cruces del playoff se completan solos. Los partidos que faltan se pueden reprogramar (siempre a una fecha y hora futuras). También está el cronograma en PDF con los resultados.</li>
+              <li><strong>Zonas:</strong> sorteo automático, acomodás a mano lo que necesites y cargás cuándo empieza cada zona (día, hora y complejo del primer partido). Más abajo cargás los resultados de cada partido y la tabla de posiciones se calcula sola. Una zona con resultados ya no se puede modificar.</li>
+              <li><strong>Playoff:</strong> el cuadro se arma solo con los clasificados, separando lo más posible a las parejas de una misma zona (1° Zona A vs 2° Zona B…). Se ve en llaves: tocás un partido para cargar el resultado y el ganador pasa solo a la ronda siguiente. Con el primer resultado de playoff, los cruces quedan fijos.</li>
               <li><strong>Imágenes:</strong> zonas y playoff (con nombres y resultados a medida que se cargan) listas para compartir por WhatsApp (también con el botón verde de abajo a la derecha).</li>
             </ol>
             <p className="mt-2 text-xs text-noche/60">Cada categoría es un torneo aparte. Para otra categoría, usá “Duplicar” y cambiá el nombre y las parejas.</p>
@@ -39,7 +38,7 @@ export default function Instructivo() {
               <p className="mb-1.5 flex items-center gap-2 font-semibold text-noche"><Database className="h-4 w-4" aria-hidden /> Dónde se guardan los torneos</p>
               <ul className="list-disc space-y-1 pl-5">
                 <li>Todo se guarda solo en la <strong>base de datos</strong>: los ves desde cualquier celular o compu entrando con el usuario.</li>
-                <li>Si dos personas cargan resultados a la vez, tocá <strong>Traer cambios</strong> en “Partidos” para ver lo que cargó la otra.</li>
+                <li>Si dos personas cargan resultados a la vez, tocá <strong>Traer cambios</strong> (arriba, al lado del estado de guardado) para ver lo que cargó la otra.</li>
                 <li>Arriba a la derecha de cada torneo se ve si los cambios ya quedaron guardados.</li>
               </ul>
             </div>

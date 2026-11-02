@@ -1,7 +1,10 @@
+import { useMemo } from 'react'
 import { ArrowDown, ArrowUp, ListOrdered, Lock, Plus, Shuffle, Trash2 } from 'lucide-react'
-import { LETRAS, clasificados, sugerirZonas, type Categoria } from '../../lib/torneo'
-import { zonasBloqueadas, playoffIniciado } from '../../lib/resultados'
+import { LETRAS, clasificados, sugerirZonas, type Categoria, type Resultado } from '../../lib/torneo'
+import { zonasBloqueadas, playoffIniciado, resolverTorneo, type Partido } from '../../lib/resultados'
 import { Alerta, Button, Card, Select } from '../ui'
+import { SelectorFormato } from '../Formato'
+import { ZonaResultados } from '../Resultados'
 import HorariosZona from './HorariosZona'
 import { ProblemaHorario } from './Datos'
 
@@ -40,6 +43,17 @@ export default function PasoZonas({ cat, cambiar }: Props) {
       return c
     })
 
+  const res = useMemo(() => resolverTorneo(cat), [cat])
+  const setResultado = (p: Partido, r: Resultado | null) =>
+    cambiar((c) => {
+      const nuevo = { ...c.resultadosZona }
+      if (r) nuevo[p.key] = r
+      else delete nuevo[p.key]
+      return { ...c, resultadosZona: nuevo }
+    })
+  const jugados = res.zonas.flatMap((z) => z.partidos).filter((p) => p.estado === 'jugado').length
+  const totalPartidos = res.zonas.flatMap((z) => z.partidos).length
+
   const errores: string[] = []
   if (sinZona.length) errores.push(`Faltan ubicar ${sinZona.length} pareja(s).`)
   zonas.forEach((z, k) => { if (z.length < 3 || z.length > 4) errores.push(`La zona ${LETRAS[k]} tiene ${z.length}: tienen que ser de 3 o 4.`) })
@@ -67,7 +81,7 @@ export default function PasoZonas({ cat, cambiar }: Props) {
       </Card>
       {algunaBloqueada && (
         <Alerta tipo="aviso">
-          {todoBloqueado ? 'Ya hay resultados de playoff: las zonas no se pueden modificar.' : 'Las zonas con resultados cargados no se pueden modificar (ni moverles parejas). Para cambiarlas, primero borrá sus resultados en “Partidos”.'}
+          {todoBloqueado ? 'Ya hay resultados de playoff: las zonas no se pueden modificar.' : 'Las zonas con resultados cargados no se pueden modificar (ni moverles parejas). Para cambiarlas, primero borrá sus resultados (más abajo, en “Resultados”).'}
         </Alerta>
       )}
 
@@ -134,6 +148,24 @@ export default function PasoZonas({ cat, cambiar }: Props) {
       </p>
 
       {errores.length === 0 && <HorariosZona cat={cat} cambiar={cambiar} />}
+
+      {errores.length === 0 && (
+        <section className="space-y-3" aria-label="Resultados de zonas">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-noche/10 pb-2">
+            <div>
+              <h3 className="font-display text-2xl font-bold">Resultados</h3>
+              <p className="text-sm text-noche/65"><strong className="num">{jugados}</strong> de <span className="num">{totalPartidos}</span> partidos con resultado. Las posiciones se calculan solas.</p>
+            </div>
+            <SelectorFormato cat={cat} cambiar={cambiar} instancia="zonas" />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {res.zonas.map((z) => (
+              <ZonaResultados key={z.zona} z={z} cat={cat} cambiar={cambiar} onResultado={setResultado}
+                nombre={(id) => (id ? cat.parejas.find((p) => p.id === id)?.nombre ?? '—' : '—')} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

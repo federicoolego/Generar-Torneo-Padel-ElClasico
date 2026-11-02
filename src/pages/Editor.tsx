@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, CloudUpload, Loader2, Share2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, CloudUpload, Loader2, RefreshCw, Share2 } from 'lucide-react'
 import { cargar, escucharGuardado, estadoGuardado, guardar, vaciar, type EstadoGuardado } from '../lib/almacen'
 import {
-  MAX_PAREJAS, MIN_PAREJAS, datosCompletos, erroresCuadro, precargarHorarios, firmaZonas, horarioCompleto, partidosDeZona, rangoFechas, rondasPlayoff, type Categoria,
+  MAX_PAREJAS, MIN_PAREJAS, claveInicioZona, datosCompletos, erroresCuadro, precargarHorarios, firmaZonas, horarioCompleto, rangoFechas, type Categoria,
 } from '../lib/torneo'
-import { resolverTorneo } from '../lib/resultados'
 import { Alerta, Button, Modal, Spinner } from '../components/ui'
 import Compartir from '../components/Compartir'
 import { PasoDatos, PasoParejas } from '../components/pasos/Datos'
 import PasoZonas from '../components/pasos/Zonas'
 import PasoPlayoff from '../components/pasos/Playoff'
-import PasoPartidos from '../components/pasos/Partidos'
 
-// Imágenes va última y separada a la derecha
-const PASOS = ['Torneo', 'Parejas', 'Zonas', 'Playoff', 'Partidos', 'Imágenes'] as const
+// Los resultados se cargan dentro de Zonas y de Playoff. Imágenes va última y separada a la derecha
+const PASOS = ['Torneo', 'Parejas', 'Zonas', 'Playoff', 'Imágenes'] as const
 
 /** `inicial`: torneo nuevo, todavía no guardado. Se crea en la base recién cuando se completan los datos obligatorios */
 export default function Editor({ id, inicial, onVolver }: { id: string; inicial?: Categoria; onVolver: () => void }) {
@@ -76,31 +74,26 @@ export default function Editor({ id, inicial, onVolver }: { id: string; inicial?
     const ubicadas = new Set(cat.zonas.flat())
     const zonasOk = cat.zonas.length > 0 && cat.zonas.every((z) => z.length === 3 || z.length === 4) &&
       cat.parejas.every((p) => ubicadas.has(p.id)) && cat.zonas.flat().length === ubicadas.size
-    const partidosZ = zonasOk ? cat.zonas.flatMap((z, zi) => partidosDeZona(z, zi, () => '')) : []
-    const sinHorarioZ = partidosZ.filter((p) => !horarioCompleto(cat.horariosZona[p.key])).length
+    // cada zona necesita día, hora y complejo de su primer partido
+    const sinInicioZ = zonasOk ? cat.zonas.filter((_, zi) => !horarioCompleto(cat.horariosZona[claveInicioZona(zi)])).length : 0
     const cuadroOk = zonasOk && !!cat.cuadro && erroresCuadro(cat.cuadro, cat.zonas).length === 0
-    const primera = cuadroOk ? rondasPlayoff(cat.cuadro!)[0].filter((p) => !p.bye) : []
-    const sinHorarioP = primera.filter((p) => !horarioCompleto(cat.horariosPlayoff[p.key])).length
-    const terminado = cuadroOk && !!resolverTorneo(cat).campeon
     return {
       ok: [
         datosCompletos(cat),
         cat.parejas.length >= MIN_PAREJAS && cat.parejas.length <= MAX_PAREJAS,
-        zonasOk && sinHorarioZ === 0,
-        cuadroOk && sinHorarioP === 0,
-        terminado,
+        zonasOk && sinInicioZ === 0,
+        cuadroOk,
         zonasOk,
       ],
-      // lo mínimo para avanzar: torneo, parejas y zonas armadas (los horarios se pueden completar después)
+      // lo mínimo para avanzar: torneo, parejas y zonas armadas (el inicio de cada zona se puede completar después)
       listo: [
         datosCompletos(cat),
         cat.parejas.length >= MIN_PAREJAS && cat.parejas.length <= MAX_PAREJAS,
         zonasOk,
       ],
       avisos: [
-        ...(sinHorarioZ ? [`Faltan día, horario o complejo en ${sinHorarioZ} partido(s) de zona.`] : []),
+        ...(sinInicioZ ? [`Falta día, horario o complejo de inicio en ${sinInicioZ} zona(s).`] : []),
         ...(zonasOk && !cuadroOk ? ['Todavía no armaste el playoff: solo se genera la imagen de zonas.'] : []),
-        ...(sinHorarioP ? [`Faltan día, horario o complejo en ${sinHorarioP} partido(s) de la primera ronda del playoff.`] : []),
       ],
     }
   }, [cat])
@@ -122,7 +115,12 @@ export default function Editor({ id, inicial, onVolver }: { id: string; inicial?
     <>
       <div className="mb-3 flex items-center justify-between gap-3">
         <button onClick={volver} className="inline-flex items-center gap-1 text-sm font-semibold text-cancha"><ArrowLeft className="h-4 w-4" aria-hidden /> Torneos</button>
-        {persistido.current ? <IndicadorGuardado {...guardado} /> : <span className="text-xs text-noche/55">Sin guardar · se crea al completar nombre y fechas</span>}
+        {persistido.current ? (
+          <span className="flex items-center gap-3">
+            <button onClick={() => { void recargar() }} title="Traer lo que cargó otra persona" className="inline-flex items-center gap-1 text-xs font-semibold text-cancha"><RefreshCw className="h-3.5 w-3.5" aria-hidden /> Traer cambios</button>
+            <IndicadorGuardado {...guardado} />
+          </span>
+        ) : <span className="text-xs text-noche/55">Sin guardar · se crea al completar nombre y fechas</span>}
       </div>
       <h1 className="font-display text-4xl font-bold leading-none">{cat.torneo || 'Nuevo torneo'}</h1>
       <p className="mb-5 mt-1 text-sm text-noche/60">
@@ -145,8 +143,7 @@ export default function Editor({ id, inicial, onVolver }: { id: string; inicial?
       {paso === 1 && <PasoParejas cat={cat} cambiar={cambiar} />}
       {paso === 2 && <PasoZonas cat={cat} cambiar={cambiar} />}
       {paso === 3 && <PasoPlayoff cat={cat} cambiar={cambiar} />}
-      {paso === 4 && <PasoPartidos cat={cat} cambiar={cambiar} onRecargar={recargar} />}
-      {paso === 5 && <Compartir cat={cat} avisos={estado.avisos} />}
+      {paso === 4 && <Compartir cat={cat} avisos={estado.avisos} />}
 
       <div className="mt-8 flex justify-between gap-3">
         <Button variante="secundario" onClick={() => setPaso(paso - 1)} disabled={paso === 0}><ArrowLeft className="h-4 w-4" aria-hidden /> Anterior</Button>
