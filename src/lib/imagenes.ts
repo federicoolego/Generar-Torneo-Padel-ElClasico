@@ -1,5 +1,5 @@
 // Genera las imágenes (PNG) de zonas y playoff dibujando en un <canvas>
-import { LETRAS, diaLargo, formatoPesos, inicioZona, partidosDeZona, rangoFechas, rondasPlayoff, sedeCorta, textoHorario, type Categoria } from './torneo'
+import { LETRAS, diaLargo, formatoPesos, inicioZona, partidosDeZona, rangoFechas, rondasPlayoff, textoHorario, type Categoria } from './torneo'
 import { resolverTorneo } from './resultados'
 
 // Paleta de El Clásico (índigo del logo, azul del escudo y amarillo de la pelota)
@@ -210,7 +210,7 @@ function tarjetaZona(ctx: CanvasRenderingContext2D, cat: Categoria, zi: number, 
   const titulo = `ZONA ${LETRAS[zi]}`
   const ini = inicioZona(cat, zi)
   const textoInicio = ini && (ini.fecha || ini.hora)
-    ? `EMPIEZA ${[ini.fecha ? textoHorario({ fecha: ini.fecha, hora: '' }) : '', ini.hora ? `${ini.hora} HS` : '', ini.sede ? sedeCorta(ini.sede) : ''].filter(Boolean).join(' · ')}`.toUpperCase()
+    ? `EMPIEZA ${[ini.fecha ? textoHorario({ fecha: ini.fecha, hora: '' }) : '', ini.hora ? `${ini.hora} HS` : '', ini.sede ? ini.sede ?? '' : ''].filter(Boolean).join(' · ')}`.toUpperCase()
     : ''
   const cNum = 48, cPart = 120
   const cPar = ancho - cNum - cPart
