@@ -210,7 +210,7 @@ function tarjetaZona(ctx: CanvasRenderingContext2D, cat: Categoria, zi: number, 
   const titulo = `ZONA ${LETRAS[zi]}`
   const ini = inicioZona(cat, zi)
   const textoInicio = ini && (ini.fecha || ini.hora)
-    ? `EMPIEZA ${[ini.fecha ? textoHorario({ fecha: ini.fecha, hora: '' }) : '', ini.hora ? `${ini.hora} HS` : '', ini.sede ? ini.sede ?? '' : ''].filter(Boolean).join(' · ')}`.toUpperCase()
+    ? `${[ini.fecha ? textoHorario({ fecha: ini.fecha, hora: '' }) : '', ini.hora ? `${ini.hora} HS` : '', ini.sede ? ini.sede ?? '' : ''].filter(Boolean).join(' · ')}`.toUpperCase()
     : ''
   const cNum = 48, cPart = 120
   const cPar = ancho - cNum - cPart
